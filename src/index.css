@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@media print {
+  html, body {
+    background-color: #ffffff !important;
+    color: #18181b !important;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide background systems, wizard navigations, interactive elements */
+  header, main, footer, .no-print, button, input, select {
+    display: none !important;
+  }
+
+  /* Exclusively display the certified document */
+  .print-only-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    margin: 0 !important;
+    padding: 1.5in !important; /* Proper industry legal padding */
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Ensure page break elements split nicely on paper sizing */
+  .page-break {
+    clear: both;
+    page-break-before: always;
+    break-before: page;
+  }
+}
+
+/* Hide print layout blocks on interactive display screens */
+@media screen {
+  .print-only-container {
+    display: none !important;
+  }
+}

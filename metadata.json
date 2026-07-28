@@ -1,0 +1,6 @@
+{
+  "name": "Sterling Sound AI v2",
+  "description": "Premium preparation workspace for Google Play Console publishing: optimizes titles & descriptions, performs pixel-precise store asset checks, manages 20-tester campaigns for 14 continuous days, and prepares deployment release assets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
