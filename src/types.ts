@@ -2,75 +2,52 @@ export interface AppMetadata {
   title: string;
   shortDescription: string;
   longDescription: string;
-  appType: 'Application' | 'Game';
+  appType: string;
   category: string;
   tags: string[];
-}
-
-export interface ContentRatingAnswers {
-  violence: 'none' | 'mild' | 'moderate' | 'intense';
-  sexuality: 'none' | 'mild' | 'moderate' | 'intense';
-  language: 'none' | 'mild' | 'moderate';
-  gambling: boolean;
-  userInteraction: boolean;
-}
-
-export interface StoreAsset {
-  id: string;
-  name: string;
-  url: string;
-  size: number;
-  width: number;
-  height: number;
-  validationStatus: 'pending' | 'valid' | 'invalid';
-  validationError?: string;
-  type?: 'icon' | 'feature' | 'screenshot_phone' | 'screenshot_tablet';
+  privacyPolicyUrl: string;
+  privacyPolicyText: string;
 }
 
 export interface Tester {
   id: string;
   name: string;
   email: string;
-  deviceType: 'Android Phone' | 'Android Tablet' | 'Android emulator' | 'Wear OS' | 'ChromeOS';
-  status: 'Invited' | 'Registered' | 'Opted-In' | 'Active' | 'Inactive';
+  deviceType: string;
+  status: 'Active' | 'Opted-In' | 'Pending';
   joinDate: string;
-  checkInDates: string[]; // dates like "2026-06-10"
+  checkInDates: string[];
 }
 
-export interface FeedbackLog {
+export interface TesterFeedback {
   id: string;
   testerName: string;
   testerEmail: string;
   date: string;
-  rating: number; // 1-5
+  rating: number;
   comment: string;
-  status: 'Open' | 'Resolved' | 'In Progress';
+  status: 'Open' | 'In Progress' | 'Resolved';
 }
 
-export interface ProductionRelease {
+export interface ReleaseAsset {
+  id: string;
+  name: string;
+  url: string;
+  size: number;
+  width: number;
+  height: number;
+  validationStatus: 'valid' | 'invalid' | 'warning';
+  type: 'icon' | 'feature' | 'screenshot_phone' | 'screenshot_tablet';
+}
+
+export interface ProductionReleaseInfo {
   bundleName: string;
   bundleSize: string;
   versionName: string;
   versionCode: number;
   targetSdk: string;
-  countries: string[]; // list of country names
+  countries: string[];
   recruitmentDetails: string;
   optInDetails: string;
   feedbackChangesDetails: string;
-}
-
-export interface AppPublishState {
-  metadata: AppMetadata;
-  contentRating: ContentRatingAnswers;
-  assets: {
-    icon: StoreAsset | null;
-    feature: StoreAsset | null;
-    screenshotsPhone: StoreAsset[];
-    screenshotsTablet: StoreAsset[];
-  };
-  testers: Tester[];
-  feedback: FeedbackLog[];
-  release: ProductionRelease;
-  currentStep: number; // For step-by-step guidance
-  testingStartDate: string; // ISO date or "YYYY-MM-DD" describing when testing period began
 }

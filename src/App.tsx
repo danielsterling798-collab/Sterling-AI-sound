@@ -1,444 +1,220 @@
-import React, { useState, useEffect } from 'react';
-import { AppPublishState, AppMetadata, ContentRatingAnswers, StoreAsset, Tester, FeedbackLog, ProductionRelease } from './types';
-import { INITIAL_TESTERS, INITIAL_FEEDBACKS } from './constants';
+import { useState } from 'react';
+import { 
+  AudioWaveform, 
+  ExternalLink, 
+  FileText, 
+  Users, 
+  Package, 
+  Link2,
+  DollarSign,
+  CreditCard
+} from 'lucide-react';
 import { MetadataTab } from './components/MetadataTab';
-import { AssetsTab } from './components/AssetsTab';
 import { TestingTab } from './components/TestingTab';
 import { ReleaseTab } from './components/ReleaseTab';
-import { ExportAuditModal } from './components/ExportAuditModal';
-import { DangerZoneModal } from './components/DangerZoneModal';
-
+import { DeepLinksAndAppGuide } from './components/DeepLinksAndAppGuide';
+import { AdMobGuideTab } from './components/AdMobGuideTab';
+import { PlayBillingUpgradeTab } from './components/PlayBillingUpgradeTab';
+import { Visualizer } from './components/Visualizer';
 import { 
-  Compass, LayoutGrid, CheckSquare, 
-  ChevronRight, ChevronLeft, Award, Sparkles, Star, Eye, ShieldCheck, Trash2
-} from 'lucide-react';
+  INITIAL_METADATA, 
+  INITIAL_TESTERS, 
+  INITIAL_FEEDBACK, 
+  INITIAL_RELEASE 
+} from './constants';
+import { AppMetadata, Tester, TesterFeedback } from './types';
 
-const LOCAL_STORAGE_KEY = 'sterling_playlaunch_v1_state';
+export function App() {
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'metadata' | 'testing' | 'release' | 'deeplinks' | 'admob' | 'billing'>('billing');
+  const [metadata, setMetadata] = useState<AppMetadata>(INITIAL_METADATA);
+  const [testers, setTesters] = useState<Tester[]>(INITIAL_TESTERS);
+  const [feedback, setFeedback] = useState<TesterFeedback[]>(INITIAL_FEEDBACK);
+  const [release] = useState(INITIAL_RELEASE);
 
-const DEFAULT_METADATA: AppMetadata = {
-  title: 'Sterling Sound AI v2',
-  shortDescription: 'Professional studio mastering and audio spectral analyzer app.',
-  longDescription: 'Sterling Sound AI is a professional-grade spectral audio visualizer and smart EQ tuner. Built utilizing fast discrete Fourier transforms, this mobile workstation delivers realtime 64-band visual telemetry, logarithmic spectral analyzers, and precise multi-band equalizations. Perfect for live musicians, acoustic engineers, and audiophiles seeking reference-level monitoring and custom target curves on headphones, car cabins, or home theater configurations.',
-  appType: 'Application',
-  category: 'Music & Audio',
-  tags: ['Audio-Editor', 'Utilities', 'Minimalist']
-};
-
-const DEFAULT_CONTENT_RATING: ContentRatingAnswers = {
-  violence: 'none',
-  sexuality: 'none',
-  language: 'none',
-  gambling: false,
-  userInteraction: false
-};
-
-const INITIAL_STATE: AppPublishState = {
-  metadata: DEFAULT_METADATA,
-  contentRating: DEFAULT_CONTENT_RATING,
-  assets: {
-    icon: null,
-    feature: null,
-    screenshotsPhone: [],
-    screenshotsTablet: []
-  },
-  testers: INITIAL_TESTERS,
-  feedback: INITIAL_FEEDBACKS,
-  release: {
-    bundleName: '',
-    bundleSize: '',
-    versionName: '',
-    versionCode: 1,
-    targetSdk: '',
-    countries: [],
-    recruitmentDetails: '',
-    optInDetails: '',
-    feedbackChangesDetails: ''
-  },
-  currentStep: 0,
-  testingStartDate: '2026-06-01'
-};
-
-export default function App() {
-  const [state, setState] = useState<AppPublishState>(INITIAL_STATE);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isResetDangerModalOpen, setIsResetDangerModalOpen] = useState(false);
-
-  // Load from local storage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as AppPublishState;
-        
-        // Self-healing migration: shrink any existing massive base64 strings to save quota
-        if (parsed.assets) {
-          if (parsed.assets.icon && parsed.assets.icon.url && parsed.assets.icon.url.length > 150000) {
-            parsed.assets.icon.url = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-          }
-          if (parsed.assets.feature && parsed.assets.feature.url && parsed.assets.feature.url.length > 250000) {
-            parsed.assets.feature.url = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-          }
-          if (parsed.assets.screenshotsPhone) {
-            parsed.assets.screenshotsPhone = parsed.assets.screenshotsPhone.map(s => {
-              if (s.url && s.url.length > 150000) {
-                return { ...s, url: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' };
-              }
-              return s;
-            });
-          }
-          if (parsed.assets.screenshotsTablet) {
-            parsed.assets.screenshotsTablet = parsed.assets.screenshotsTablet.map(s => {
-              if (s.url && s.url.length > 150000) {
-                return { ...s, url: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' };
-              }
-              return s;
-            });
-          }
-        }
-        
-        setState(parsed);
-      }
-    } catch (e) {
-      console.error('Failed to load local storage state:', e);
-    } finally {
-      setIsInitialized(true);
-    }
-  }, []);
-
-  // Save to local storage on edits
-  useEffect(() => {
-    if (!isInitialized) return;
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error('Failed to save state to local storage, attempting self-healing compression:', e);
-      // If we exceed quota, aggressively shrink heavy assets in local state so saving can succeed next time
-      setState(prev => {
-        const cleanAssets = {
-          icon: prev.assets.icon ? {
-            ...prev.assets.icon,
-            url: prev.assets.icon.url && prev.assets.icon.url.length > 100000 
-              ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' 
-              : prev.assets.icon.url
-          } : null,
-          feature: prev.assets.feature ? {
-            ...prev.assets.feature,
-            url: prev.assets.feature.url && prev.assets.feature.url.length > 100000 
-              ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' 
-              : prev.assets.feature.url
-          } : null,
-          screenshotsPhone: prev.assets.screenshotsPhone.map(s => ({
-            ...s,
-            url: s.url && s.url.length > 100000 
-              ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' 
-              : s.url
-          })),
-          screenshotsTablet: prev.assets.screenshotsTablet.map(s => ({
-            ...s,
-            url: s.url && s.url.length > 100000 
-              ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' 
-              : s.url
-          }))
-        };
-        return {
-          ...prev,
-          assets: cleanAssets
-        };
-      });
-    }
-  }, [state, isInitialized]);
-
-  // Handler state updates
-  const handleMetadataChange = (metadata: AppMetadata) => {
-    setState(prev => ({ ...prev, metadata }));
+  const handleUpdateMetadata = (updated: Partial<AppMetadata>) => {
+    setMetadata((prev: AppMetadata) => ({ ...prev, ...updated }));
   };
 
-  const handleContentRatingChange = (contentRating: ContentRatingAnswers) => {
-    setState(prev => ({ ...prev, contentRating }));
+  const handleAddTester = (tester: Tester) => {
+    setTesters((prev: Tester[]) => [tester, ...prev]);
   };
 
-  const handleAssetChange = (key: 'icon' | 'feature' | 'screenshotsPhone' | 'screenshotsTablet', value: any) => {
-    setState(prev => ({
-      ...prev,
-      assets: {
-        ...prev.assets,
-        [key]: value
-      }
-    }));
+  const handleAddFeedback = (item: TesterFeedback) => {
+    setFeedback((prev: TesterFeedback[]) => [item, ...prev]);
   };
-
-  const handleTestersChange = (testers: Tester[]) => {
-    setState(prev => ({ ...prev, testers }));
-  };
-
-  const handleFeedbackChange = (feedback: FeedbackLog[]) => {
-    setState(prev => ({ ...prev, feedback }));
-  };
-
-  const handleReleaseChange = (release: ProductionRelease) => {
-    setState(prev => ({ ...prev, release }));
-  };
-
-  const handleStepChange = (step: number) => {
-    if (step >= 0 && step <= 3) {
-      setState(prev => ({ ...prev, currentStep: step }));
-    }
-  };
-
-  const handleResetAllData = () => {
-    setState(INITIAL_STATE);
-  };
-
-  // Helper sequence of dates for continuous campaign calculations
-  const getCampaignDateString = (dayIndex: number) => {
-    const start = new Date(state.testingStartDate);
-    start.setDate(start.getDate() + dayIndex);
-    return start.toISOString().split('T')[0];
-  };
-
-  // Calculate overall campaign checks
-  const getCampaignMetrics = () => {
-    let continuousStreak = 0;
-    const testersCount = state.testers.length;
-    
-    // Check consecutive days with >= 20 checkers
-    for (let i = 0; i < 14; i++) {
-      const dateStr = getCampaignDateString(i);
-      const activeCount = state.testers.filter(t => t.checkInDates.includes(dateStr)).length;
-      if (activeCount >= 20) {
-        continuousStreak = i + 1;
-      } else {
-        break;
-      }
-    }
-
-    return {
-      continuousStreak,
-      isStreakPassed: continuousStreak >= 14,
-      isCohortPassed: testersCount >= 20
-    };
-  };
-
-  const metrics = getCampaignMetrics();
-
-  // Progress metrics
-  const getPublishProgressPercent = () => {
-    let completedPoints = 0;
-    let totalPoints = 12;
-
-    if (state.metadata.title.length > 5) completedPoints++;
-    if (state.metadata.shortDescription.length > 10) completedPoints++;
-    if (state.metadata.longDescription.length > 50) completedPoints++;
-    if (state.metadata.category.length > 0) completedPoints++;
-    
-    if (state.assets.icon) completedPoints++;
-    if (state.assets.feature) completedPoints++;
-    if (state.assets.screenshotsPhone.length >= 2) completedPoints++;
-    if (state.assets.screenshotsTablet.length >= 2) completedPoints++;
-
-    if (state.testers.length >= 20) completedPoints++;
-    if (metrics.isStreakPassed) completedPoints++;
-
-    if (state.release.bundleName.endsWith('.aab')) completedPoints++;
-    if (state.release.countries.length > 0) completedPoints++;
-
-    return Math.round((completedPoints / totalPoints) * 100);
-  };
-
-  const currentProgressPercent = getPublishProgressPercent();
-
-  // Step names
-  const STEPS_INDEX = [
-    { label: 'Step 1: Create App', desc: 'Listing Metadata' },
-    { label: 'Step 2: Store Assets', desc: 'Dimensions & Preview' },
-    { label: 'Step 3: Closed Testing', desc: '20 Testers x 14 Days' },
-    { label: 'Step 4: Send for Review', desc: 'Region & AAB rollout' }
-  ];
 
   return (
-    <div className="min-h-screen bg-[#fafafb] text-zinc-800 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 pb-16">
-      {/* Visual Header */}
-      <header className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 bg-white sticky top-0 z-40 shadow-sm gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-505 bg-indigo-600 flex items-center justify-center text-white font-black shadow-md">
-            P
-          </div>
-          <div className="text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold uppercase tracking-tight text-sm text-zinc-900 leading-none">Sterling PlayLaunch</span>
-              <span className="text-[9px] bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">V2.1</span>
-            </div>
-            <span className="text-[10px] text-zinc-400 font-bold block mt-0.5">Google Play Console Publishing Workspace</span>
-          </div>
-        </div>
-
-        {/* Global Progress Gauge & Compliance Export Trigger */}
-        <div className="flex flex-wrap items-center gap-4 text-left">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase block tracking-wider font-mono">Publication Readiness score</span>
-            <div className="flex items-center gap-2">
-              <div className="w-24 sm:w-28 bg-zinc-100 h-2 rounded-full overflow-hidden border border-zinc-150">
-                <div 
-                  className="bg-indigo-600 h-full transition-all duration-500"
-                  style={{ width: `${currentProgressPercent}%` }}
-                />
+    <div className="min-h-screen bg-[#070a0f] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-black">
+      
+      {/* Top Header */}
+      <header className="border-b border-slate-800/80 bg-[#090d14]/90 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          
+          {/* Logo & Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 p-0.5 shadow-lg shadow-cyan-950">
+              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                <AudioWaveform className="w-5 h-5 text-cyan-400" />
               </div>
-              <span className="text-xs font-black text-indigo-700">{currentProgressPercent}%</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-white tracking-tight">Sterling Sound AI v2</h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                  v1.0.0-PROD
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Google Play Console Publishing & 14-Day Audit Workspace</p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-950 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-md shrink-0 no-print cursor-pointer"
-          >
-            <ShieldCheck className="w-4 h-4 text-indigo-400" /> Export Audit Trail
-          </button>
+          {/* Quick External Actions */}
+          <div className="flex items-center gap-3">
+            <a
+              href="https://sites.google.com/view/sterlingsound-privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/50 transition-colors"
+            >
+              Privacy Policy <ExternalLink className="w-3 h-3 text-slate-400" />
+            </a>
 
-          <button
-            type="button"
-            onClick={() => setIsResetDangerModalOpen(true)}
-            className="py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-md shrink-0 no-print cursor-pointer"
-            title="Reset All Application Data"
-          >
-            <Trash2 className="w-4 h-4 text-red-500" /> Clear All Data
-          </button>
+            <a
+              href="https://play.google.com/console"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 px-3.5 py-1.5 rounded-lg shadow-md transition-colors"
+            >
+              Play Console <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
         </div>
       </header>
 
-      {/* Steps checklist matrix navigation visual slider */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white border border-zinc-150 p-2 rounded-2xl shadow-sm">
-          {STEPS_INDEX.map((step, idx) => {
-            const isActive = state.currentStep === idx;
-            const isCompleted = (idx === 0 && state.metadata.title.length > 5) ||
-                               (idx === 1 && state.assets.icon && state.assets.screenshotsPhone.length >= 2) ||
-                               (idx === 2 && state.testers.length >= 20 && metrics.isStreakPassed) ||
-                               (idx === 3 && state.release.bundleName.endsWith('.aab') && state.release.countries.length > 0);
+      {/* Navigation Tabs Bar */}
+      <div className="border-b border-slate-800/80 bg-[#090d14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <nav className="flex space-x-1 sm:space-x-4 overflow-x-auto py-2.5 scrollbar-none">
+            
+            <button
+              onClick={() => setActiveTab('release')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'release'
+                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Package className="w-4 h-4 text-blue-400" />
+              Production Release & AAB
+            </button>
 
-            return (
-              <button
-                key={step.label}
-                type="button"
-                onClick={() => handleStepChange(idx)}
-                className={`p-3 rounded-xl text-left transition-all relative ${
-                  isActive 
-                    ? 'bg-zinc-900 text-white shadow' 
-                    : 'text-zinc-650 hover:bg-zinc-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] uppercase font-bold tracking-tight ${isActive ? 'text-zinc-400' : 'text-zinc-400'}`}>
-                    {step.label.split(':')[0]}
-                  </span>
-                  {isCompleted && (
-                    <span className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0">
-                      ✓
-                    </span>
-                  )}
-                </div>
-                <span className="block text-xs font-black truncate leading-tight font-sans mt-1">
-                  {step.label.split(':')[1].trim()}
-                </span>
-                <span className={`block text-[10px] ${isActive ? 'text-zinc-300' : 'text-zinc-400'}`}>
-                  {step.desc}
-                </span>
-              </button>
-            );
-          })}
+            <button
+              onClick={() => setActiveTab('testing')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'testing'
+                  ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Users className="w-4 h-4 text-emerald-400" />
+              14-Day 20-Tester Track
+            </button>
+
+            <button
+              onClick={() => setActiveTab('metadata')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'metadata'
+                  ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-purple-400" />
+              Store Listing & Privacy
+            </button>
+
+            <button
+              onClick={() => setActiveTab('deeplinks')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'deeplinks'
+                  ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Link2 className="w-4 h-4 text-cyan-400" />
+              Deep Links & Manifest
+            </button>
+
+            <button
+              onClick={() => setActiveTab('admob')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'admob'
+                  ? 'bg-amber-600/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-amber-400" />
+              AdMob Integration Guide
+            </button>
+
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'billing'
+                  ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <CreditCard className="w-4 h-4 text-emerald-400" />
+              Play Billing Upgrade (PBL 7.x)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('visualizer')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'visualizer'
+                  ? 'bg-rose-600/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <AudioWaveform className="w-4 h-4 text-rose-400" />
+              Live Audio DSP
+            </button>
+
+          </nav>
         </div>
       </div>
 
-      {/* Main Tab content container */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 font-sans">
-        {state.currentStep === 0 && (
-          <MetadataTab
-            metadata={state.metadata}
-            onChange={handleMetadataChange}
-            contentRating={state.contentRating}
-            onContentRatingChange={handleContentRatingChange}
+      {/* Main Tab Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        {activeTab === 'release' && <ReleaseTab release={release} />}
+        {activeTab === 'testing' && (
+          <TestingTab 
+            testers={testers} 
+            feedback={feedback} 
+            onAddTester={handleAddTester} 
+            onAddFeedback={handleAddFeedback} 
           />
         )}
-
-        {state.currentStep === 1 && (
-          <AssetsTab
-            metadata={state.metadata}
-            assets={state.assets}
-            onAssetChange={handleAssetChange}
-          />
+        {activeTab === 'metadata' && (
+          <MetadataTab metadata={metadata} onUpdate={handleUpdateMetadata} />
         )}
-
-        {state.currentStep === 2 && (
-          <TestingTab
-            metadata={state.metadata}
-            testers={state.testers}
-            feedback={state.feedback}
-            onTestersChange={handleTestersChange}
-            onFeedbackChange={handleFeedbackChange}
-          />
-        )}
-
-        {state.currentStep === 3 && (
-          <ReleaseTab
-            metadata={state.metadata}
-            testers={state.testers}
-            feedback={state.feedback}
-            release={state.release}
-            hasIcon={!!state.assets.icon}
-            hasFeature={!!state.assets.feature}
-            phoneScreenshotsCount={state.assets.screenshotsPhone.length}
-            tabletScreenshotsCount={state.assets.screenshotsTablet.length}
-            onReleaseChange={handleReleaseChange}
-            continuousStreak={metrics.continuousStreak}
-          />
-        )}        {/* Wizard Footer buttons */}
-        <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-6 no-print">
-          <button
-            type="button"
-            disabled={state.currentStep === 0}
-            onClick={() => handleStepChange(state.currentStep - 1)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all outline-none ${
-              state.currentStep === 0 
-                ? 'opacity-40 border-zinc-200 text-zinc-300 cursor-not-allowed' 
-                : 'border-zinc-200 text-zinc-650 bg-white hover:bg-zinc-50 hover:border-zinc-300'
-            }`}
-          >
-            <ChevronLeft className="w-4 h-4" /> Previous Step
-          </button>
-
-          {state.currentStep < 3 ? (
-            <button
-              type="button"
-              onClick={() => handleStepChange(state.currentStep + 1)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md outline-none"
-            >
-              Continue to {STEPS_INDEX[state.currentStep + 1].label.split(':')[1]} <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 select-none shrink-0 font-mono">
-              ★ Readiness Dashboard fully indexed. Complete audits inside Step 4 to trigger review!
-            </div>
-          )}
-        </div>
+        {activeTab === 'deeplinks' && <DeepLinksAndAppGuide />}
+        {activeTab === 'admob' && <AdMobGuideTab />}
+        {activeTab === 'billing' && <PlayBillingUpgradeTab />}
+        {activeTab === 'visualizer' && <Visualizer />}
       </main>
 
-      <ExportAuditModal 
-        isOpen={isExportModalOpen} 
-        onClose={() => setIsExportModalOpen(false)} 
-        state={state} 
-        continuousStreak={metrics.continuousStreak} 
-      />
+      {/* Footer */}
+      <footer className="border-t border-slate-800/60 bg-[#06080d] py-4 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>Sterling Sound AI v2 • Google Play Console Readiness Suite</span>
+          <span className="font-mono text-slate-400">Application ID: com.danielsterling.sterlingsoundaiv2</span>
+        </div>
+      </footer>
 
-      <DangerZoneModal
-        isOpen={isResetDangerModalOpen}
-        onClose={() => setIsResetDangerModalOpen(false)}
-        onConfirm={handleResetAllData}
-        title="Reset All Application Data"
-        description="This will permanently delete the entire workspace state (including all custom app metadata, storefront branding assets, registered testers, and active 14-day history review logs) and revert the application back to its default state. This action is completely irreversible."
-        confirmationWord="CLEAR ALL DATA"
-        actionLabel="Permanently Delete Everything"
-      />
     </div>
   );
 }
+
+export default App;
